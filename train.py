@@ -88,6 +88,7 @@ def train(epoch):
     train_error = 0.
     for batch_idx, (data, label) in enumerate(train_loader):
         bag_label = label
+        data = torch.squeeze(data)
         if cuda:
             data, bag_label = data.cuda(), bag_label.cuda()
         data, bag_label = Variable(data), Variable(bag_label)
@@ -117,6 +118,7 @@ def test():
     test_error = 0.
     for batch_idx, (data, label) in enumerate(test_loader):
         bag_label = label
+        data = torch.squeeze(data)
         # instance_labels = label[1]
         if cuda:
             data, bag_label = data.cuda(), bag_label.cuda()
@@ -245,9 +247,12 @@ def main():
                                       transforms.RandomVerticalFlip(0.5),
                                       transforms.ToTensor()])
 
-    train_loader = TileDataset(train_dir, train_df, 12, transform=transform_train)
-    test_loader = TileDataset(test_dir, test_df, 12, transform=transform_train)
-
+    train_set = TileDataset(train_dir, train_df, 12, transform=transform_train)
+    test_set = TileDataset(test_dir, test_df, 12, transform=transform_train)
+    
+    batch_size = 1
+    train_loader = data_utils.DataLoader(train_set, batch_size, shuffle=True, num_workers=0)
+    test_loader = data_utils.DataLoader(test_set, batch_size, shuffle=False, num_workers=0)
     
     '''
     if local_rank == 0:

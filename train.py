@@ -1,20 +1,4 @@
-{\rtf1\ansi\ansicpg1252\cocoartf2576
-\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fnil\fcharset0 Menlo-Regular;}
-{\colortbl;\red255\green255\blue255;\red255\green255\blue255;\red27\green31\blue35;\red27\green31\blue34;
-\red109\green109\blue109;\red27\green31\blue35;}
-{\*\expandedcolortbl;;\cssrgb\c100000\c100000\c100000;\cssrgb\c14147\c16111\c18054;\cssrgb\c14118\c16078\c18039;
-\cssrgb\c50196\c50196\c50196;\cssrgb\c14148\c16111\c18054;}
-\margl1440\margr1440\vieww17080\viewh11800\viewkind0
-\deftab720
-
-\itap1\trowd \taflags1 \trgaph108\trleft-108 \trcbpat2 \trbrdrt\brdrnil \trbrdrl\brdrnil \trbrdrt\brdrnil \trbrdrr\brdrnil 
-\clvertalt \clshdrawnil \clwWidth14560\clftsWidth3 \clbrdrt\brdrnil \clbrdrl\brdrnil \clbrdrb\brdrnil \clbrdrr\brdrnil \clpadl200 \clpadr200 \gaph\cellx4320
-\clvertalt \clshdrawnil \clwWidth14560\clftsWidth3 \clbrdrt\brdrnil \clbrdrl\brdrnil \clbrdrb\brdrnil \clbrdrr\brdrnil \clpadl200 \clpadr200 \gaph\cellx8640
-\pard\intbl\itap1\cell
-\pard\intbl\itap1\pardeftab720\sl400\partightenfactor0
-
-\f0\fs32 \cf2 \expnd0\expndtw0\kerning0
-\outl0\strokewidth0 \strokec3 # Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.\
+# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.\
 #\
 # Licensed under the Apache License, Version 2.0 (the "License"). You\
 # may not use this file except in compliance with the License. A copy of\

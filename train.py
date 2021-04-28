@@ -146,7 +146,7 @@ def save_model(model, model_dir):
 
 def main():
     # Training settings
-    ‘’’
+    '''
     parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
     parser.add_argument('--batch-size', type=int, default=64, metavar='N',
                         help='input batch size for training (default: 64)')
@@ -170,7 +170,7 @@ def main():
                                                                            'the MNIST dataset')
     # Model checkpoint location
     parser.add_argument('--model-dir', type=str, default=os.environ['SM_MODEL_DIR'])
-    ‘’’
+    '''
 
     parser.add_argument('--seed', type=int, default=1, metavar='S',
                         help='random seed (default: 1)')
@@ -249,7 +249,7 @@ def main():
     test_loader = TileDataset(test_dir, test_df, 12, transform=transform_train)
 
     
-    ‘’’
+    '''
     if local_rank == 0:
         train_dataset = datasets.MNIST(data_path, train=True, download=True,
                        transform=transforms.Compose([
@@ -283,7 +283,7 @@ def main():
                                transforms.Normalize((0.1307,), (0.3081,))
                            ])),
             batch_size=args.test_batch_size, shuffle=True)
-    ‘’’
+    '''
 
     # Use SMDataParallel PyTorch DDP for efficient distributed training
 

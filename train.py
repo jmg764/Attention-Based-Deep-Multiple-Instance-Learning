@@ -252,7 +252,7 @@ def main():
     
     batch_size = 1
     train_loader = data_utils.DataLoader(train_set, batch_size, shuffle=True, num_workers=0)
-    test_loader = data_utils.DataLoader(test_set, batch_size, shuffle=False, num_workers=0)
+    
     
     '''
     if local_rank == 0:
@@ -281,14 +281,17 @@ def main():
         num_workers=0,
         pin_memory=True,
         sampler=train_sampler)
+    '''
     if rank == 0:
+        test_loader = data_utils.DataLoader(test_set, batch_size, shuffle=False, num_workers=0)
+        '''
         test_loader = torch.utils.data.DataLoader(
             datasets.MNIST(data_path, train=False, transform=transforms.Compose([
                                transforms.ToTensor(),
                                transforms.Normalize((0.1307,), (0.3081,))
                            ])),
             batch_size=args.test_batch_size, shuffle=True)
-    '''
+        '''
 
     # Use SMDataParallel PyTorch DDP for efficient distributed training
 

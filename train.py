@@ -204,7 +204,29 @@ def main():
 
     role = get_execution_role()
     bucket='sagemaker-us-east-2-318322629142'
+    
+    tiles_key = 'train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/'
+    tiles_dir = 's3://{}/{}'.format(bucket, tiles_key)
+    
+    tiles_dict = {}
+    for image in os.listdir(tiles_dir):
+        tiles_dict[image.split('_')[0]] = tiles_dict.get(image.split('_')[0], 0) + 1
+    
+    tiles_df = list(tiles_dict.keys())
+    
+    new_tiles_df = []
+    for i in range(len(tiles_df)):
+      row = df.loc[df['image_id'] == tiles_df[i]]
+      new_tiles_df.append(row.to_dict())
 
+    tiles_df = pd.DataFrame(new_tiles_df)
+    
+    # Use only half of the data
+    tiles_df = np.array_split(df, 2)
+
+    train_df, test_df = train_test_split(tiles_df[0], test_size=0.2)
+    
+    '''
     train_tiles_key = 'train_tiles'
     train_tiles_dir = 's3://{}/{}'.format(bucket, train_tiles_key)
     
@@ -242,7 +264,8 @@ def main():
 
     train_df = pd.DataFrame(new_train_df)
     test_df = pd.DataFrame(new_test_df)
-
+    '''
+    
     transform_train = transforms.Compose([transforms.RandomHorizontalFlip(0.5),
                                       transforms.RandomVerticalFlip(0.5),
                                       transforms.ToTensor()])

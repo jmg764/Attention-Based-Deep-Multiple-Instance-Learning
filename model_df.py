@@ -27,7 +27,7 @@ class Attention(nn.Module):
     self.K = 1
 
     self.feature_extractor_part1 = nn.Sequential(
-        nn.Conv2d(3, 36, kernel_size=5),
+        nn.Conv2d(3, 36, kernel_size=4),
         nn.ReLU(),
         nn.MaxPool2d(2, stride=2),
         nn.Conv2d(36, 48, kernel_size=3),
@@ -64,8 +64,6 @@ class Attention(nn.Module):
 
     A = self.attention(H) # NxK
     A = torch.transpose(A, 1, 0) # KxN
-    print(A)
-    print(type(A))
     A = F.softmax(A, dim=1) # softmax over N
 
     M = torch.mm(A, H)

@@ -208,6 +208,17 @@ def main():
     tiles_key = 'train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/'
     tiles_dir = 's3://{}/{}'.format(bucket, tiles_key)
     
+    dataset_csv_key = ‘panda_dataset.csv’
+    dataset_csv_dir = 's3://{}/{}'.format(bucket, dataset_csv_key)
+    
+    model_key = ‘model’
+    model_dir = 's3://{}/{}'.format(bucket, model_key)
+    
+    
+    df = pd.read_csv(dataset_csv_dir)
+    df['isup_grade'] = df['isup_grade'].replace([1,2], 0)
+    df['isup_grade'] = df['isup_grade'].replace([3,4,5], 1)
+    
     tiles_dict = {}
     for image in os.listdir(tiles_dir):
         tiles_dict[image.split('_')[0]] = tiles_dict.get(image.split('_')[0], 0) + 1
@@ -223,8 +234,19 @@ def main():
     
     # Use only half of the data
     tiles_df = np.array_split(df, 2)
-
+    
+    # Train-test split
     train_df, test_df = train_test_split(tiles_df[0], test_size=0.2)
+    
+    transform_train = transforms.Compose([transforms.RandomHorizontalFlip(0.5),
+                                      transforms.RandomVerticalFlip(0.5),
+                                      transforms.ToTensor()])
+
+    train_set = TileDataset(tiles_dir, train_df, 12, transform=transform_train)
+    test_set = TileDataset(tiles_dir, test_df, 12, transform=transform_train)
+    
+    batch_size = 1
+    train_loader = data_utils.DataLoader(train_set, batch_size, shuffle=True, num_workers=0)
     
     '''
     train_tiles_key = 'train_tiles'
@@ -264,20 +286,7 @@ def main():
 
     train_df = pd.DataFrame(new_train_df)
     test_df = pd.DataFrame(new_test_df)
-    '''
-    
-    transform_train = transforms.Compose([transforms.RandomHorizontalFlip(0.5),
-                                      transforms.RandomVerticalFlip(0.5),
-                                      transforms.ToTensor()])
-
-    train_set = TileDataset(train_dir, train_df, 12, transform=transform_train)
-    test_set = TileDataset(test_dir, test_df, 12, transform=transform_train)
-    
-    batch_size = 1
-    train_loader = data_utils.DataLoader(train_set, batch_size, shuffle=True, num_workers=0)
-    
-    
-    '''
+   
     if local_rank == 0:
         train_dataset = datasets.MNIST(data_path, train=True, download=True,
                        transform=transforms.Compose([
@@ -323,14 +332,14 @@ def main():
     torch.cuda.set_device(local_rank)
     model.cuda(local_rank)
     optimizer = optim.Adam(model.parameters(), lr=0.0001, betas=(0.9, 0.999), weight_decay=0.0005)
-    scheduler = StepLR(optimizer, step_size=1)
+#     scheduler = StepLR(optimizer, step_size=1)
 
     print('Start Training')
     for epoch in range(1, 100 + 1):
         train(epoch)
         # if rank == 0:
         #    test(model, device, test_loader)
-        scheduler.step()
+#         scheduler.step()
     # print('Start Testing')
     # test()
 

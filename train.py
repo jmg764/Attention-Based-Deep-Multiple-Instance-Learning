@@ -232,8 +232,8 @@ def main():
 
     tiles_df = pd.DataFrame(new_tiles_df)
     
-    # Use only half of the data
-    tiles_df = np.array_split(df, 2)
+    # Use only a quarter of the data
+    tiles_df = np.array_split(df, 4)
     
     # Train-test split
     train_df, test_df = train_test_split(tiles_df[0], test_size=0.2)

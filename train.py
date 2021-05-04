@@ -203,7 +203,7 @@ def main():
     from sagemaker import get_execution_role
 
     role = get_execution_role()
-    bucket='sagemaker-us-east-2-318322629142'
+    bucket = 'sagemaker-us-east-2-318322629142'
     
     tiles_key = 'train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/'
     tiles_dir = 's3://{}/{}'.format(bucket, tiles_key)
@@ -243,10 +243,12 @@ def main():
                                       transforms.ToTensor()])
 
     train_set = TileDataset(tiles_dir, train_df, 12, transform=transform_train)
-    test_set = TileDataset(tiles_dir, test_df, 12, transform=transform_train)
     
     batch_size = 1
     train_loader = data_utils.DataLoader(train_set, batch_size, shuffle=True, num_workers=0)
+    
+    # Save test_df to s3 bucket
+    test_df.to_csv('s3://{}/{}'.format(bucket, 'test_df')
     
     '''
     train_tiles_key = 'train_tiles'

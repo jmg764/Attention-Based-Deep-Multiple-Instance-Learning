@@ -87,6 +87,8 @@ def train(epoch):
     train_loss = 0.
     train_error = 0.
     for batch_idx, (data, label) in enumerate(train_loader):
+        print('epoch = ', epoch)
+        print('batch_idx = ', batch_idx)
         bag_label = label
         data = torch.squeeze(data)
         if cuda:

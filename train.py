@@ -210,10 +210,10 @@ def main():
     tiles_key = 'train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/'
     tiles_dir = 's3://{}/{}'.format(bucket, tiles_key)
     
-    dataset_csv_key = ‘panda_dataset.csv’
+    dataset_csv_key = 'panda_dataset.csv'
     dataset_csv_dir = 's3://{}/{}'.format(bucket, dataset_csv_key)
     
-    model_key = ‘model’
+    model_key = 'model'
     model_dir = 's3://{}/{}'.format(bucket, model_key)
     
     
@@ -229,8 +229,8 @@ def main():
     
     new_tiles_df = []
     for i in range(len(tiles_df)):
-      row = df.loc[df['image_id'] == tiles_df[i]]
-      new_tiles_df.append(row.to_dict())
+        row = df.loc[df['image_id'] == tiles_df[i]]
+        new_tiles_df.append(row.to_dict())
 
     tiles_df = pd.DataFrame(new_tiles_df)
     
@@ -250,84 +250,10 @@ def main():
     train_loader = data_utils.DataLoader(train_set, batch_size, shuffle=True, num_workers=0)
     
     # Save test_df to s3 bucket
-    test_df.to_csv('s3://{}/{}'.format(bucket, 'test_df')
+    test_df.to_csv('s3://{}/{}'.format(bucket, 'test_df'))
     
-    '''
-    train_tiles_key = 'train_tiles'
-    train_tiles_dir = 's3://{}/{}'.format(bucket, train_tiles_key)
-    
-    test_tiles_key = 'test_tiles'
-    test_tiles_dir = 's3://{}/{}'.format(bucket, test_tiles_key)
-
-    dataset_csv_key = ‘panda_dataset.csv’
-    dataset_csv_dir = 's3://{}/{}'.format(bucket, dataset_csv_key)
-
-    model_key = ‘model’
-    model_dir = 's3://{}/{}'.format(bucket, model_key)
-
-    df = pd.read_csv(dataset_csv_dir)
-
-    train_dict = {}
-    for image in os.listdir(train_tiles_dir):
-        train_dict[image.split('_')[0]] = train_dict.get(image.split('_')[0], 0) + 1
-
-    test_dict = {}
-    for image in os.listdir(test_tiles_dir):
-        test_dict[image.split('_')[0]] = test_dict.get(image.split('_')[0], 0) + 1
-
-    train_df = list(train_dict.keys())
-    test_df = list(test_dict.keys())
-
-    new_train_df = []
-    for i in range(len(train_df)):
-        row = df.loc[df['image_id'] == train_df[i]]
-        new_train_df.append(row.to_dict())
-
-    new_test_df = []
-    for i in range(len(test_df)):
-        row = df.loc[df['image_id'] == test_df[i]]
-        new_test_df.append(row.to_dict())
-
-    train_df = pd.DataFrame(new_train_df)
-    test_df = pd.DataFrame(new_test_df)
-   
-    if local_rank == 0:
-        train_dataset = datasets.MNIST(data_path, train=True, download=True,
-                       transform=transforms.Compose([
-                           transforms.ToTensor(),
-                           transforms.Normalize((0.1307,), (0.3081,))
-                       ]))
-    else:
-        # TODO: Reduce time to half when upgrade to torchvision==0.9.1
-        time.sleep(16)
-        train_dataset = datasets.MNIST(data_path, train=True, download=False,
-                       transform=transforms.Compose([
-                           transforms.ToTensor(),
-                           transforms.Normalize((0.1307,), (0.3081,))
-                       ]))
-
-    train_sampler = torch.utils.data.distributed.DistributedSampler(
-            train_dataset,
-            num_replicas=args.world_size,
-            rank=rank)
-    train_loader = torch.utils.data.DataLoader(
-        train_dataset,
-        batch_size=args.batch_size,
-        shuffle=False,
-        num_workers=0,
-        pin_memory=True,
-        sampler=train_sampler)
-    '''
     if rank == 0:
         test_loader = data_utils.DataLoader(test_set, batch_size, shuffle=False, num_workers=0)
-        '''
-        test_loader = torch.utils.data.DataLoader(
-            datasets.MNIST(data_path, train=False, transform=transforms.Compose([
-                               transforms.ToTensor(),
-                               transforms.Normalize((0.1307,), (0.3081,))
-                           ])),
-            batch_size=args.test_batch_size, shuffle=True)
-        '''
 
     # Use SMDataParallel PyTorch DDP for efficient distributed training
 
@@ -354,3 +280,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+

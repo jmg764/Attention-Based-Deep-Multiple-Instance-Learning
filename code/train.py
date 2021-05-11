@@ -202,14 +202,22 @@ def main():
 
     import boto3
     import pandas as pd
+    import sagemaker
     from sagemaker import get_execution_role
 
-    role = get_execution_role()
-    bucket = 'sagemaker-us-east-2-318322629142'
+#     role = get_execution_role()
+#     role = sagemaker.get_execution_role()
+#     region = boto3.Session().region_name
     
-    tiles_key = 'train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/'
-    tiles_dir = 's3://{}/{}'.format(bucket, tiles_key)
+#     bucket = 'sagemaker-us-east-2-318322629142'
     
+ 
+    
+#     tiles_key = 'train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/'
+#     tiles_dir = 's3://{}/{}'.format(bucket, tiles_key)
+
+    tiles_dir = '/opt/ml/input/data/training'
+
     dataset_csv_key = 'panda_dataset.csv'
     dataset_csv_dir = 's3://{}/{}'.format(bucket, dataset_csv_key)
     

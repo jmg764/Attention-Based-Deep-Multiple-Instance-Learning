@@ -175,7 +175,7 @@ def main():
     # Model checkpoint location
     parser.add_argument('--model-dir', type=str, default=os.environ['SM_MODEL_DIR'])
     '''
-
+    parser = argparse.ArgumentParser(description='Histopathology MIL')
     parser.add_argument('--seed', type=int, default=1, metavar='S',
                         help='random seed (default: 1)')
     args = parser.parse_args()
@@ -280,4 +280,5 @@ def main():
 
 if __name__ == '__main__':
     main()
+
 

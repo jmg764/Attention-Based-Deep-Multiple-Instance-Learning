@@ -25,6 +25,8 @@ from torch.autograd import Variable
 from torch.optim.lr_scheduler import StepLR
 import torch.utils.data as data_utils
 import PIL
+import numpy as np
+from sklearn.model_selection import train_test_split
 
 # Network definition
 from model_def import Attention
@@ -59,7 +61,10 @@ class TileDataset(data_utils.Dataset):
         self.transform = transform
 
     def __getitem__(self, idx):
-        img_id = list(self.img_list[idx].values())[0]
+#         print('self.img_list = ', self.img_list)
+#         print('self.img_list[idx] = ', self.img_list[idx])
+#         img_id = list(self.img_list[idx].values())[0]
+        img_id = self.img_list[idx]
 
         tiles = ['/'+img_id + '_' + str(i) + '.png' for i in range(0, self.num_tiles)]
         metadata = self.df.iloc[idx]
@@ -82,7 +87,7 @@ class TileDataset(data_utils.Dataset):
     def __len__(self):
         return len(self.img_list)
 
-def train(epoch):
+def train(model, train_loader, optimizer, epoch):
     model.train()
     train_loss = 0.
     train_error = 0.
@@ -91,9 +96,10 @@ def train(epoch):
         print('batch_idx = ', batch_idx)
         bag_label = label
         data = torch.squeeze(data)
-        if cuda:
-            data, bag_label = data.cuda(), bag_label.cuda()
+#         if cuda:
+#             data, bag_label = data.cuda(), bag_label.cuda()
         data, bag_label = Variable(data), Variable(bag_label)
+        data, bag_label = data.to(device), bag_label.to(device)
 
         # reset gradients
         optimizer.zero_grad()
@@ -114,29 +120,32 @@ def train(epoch):
     print('Epoch: {}, Loss: {:.4f}, Train error: {:.4f}'.format(epoch, train_loss.cpu().numpy()[0], train_error))
 
 
-def test():
+def test(model, test_loader):
     model.eval()
     test_loss = 0.
     test_error = 0.
-    for batch_idx, (data, label) in enumerate(test_loader):
-        bag_label = label
-        data = torch.squeeze(data)
-        # instance_labels = label[1]
-        if cuda:
-            data, bag_label = data.cuda(), bag_label.cuda()
-        data, bag_label = Variable(data), Variable(bag_label)
-        loss, attention_weights = model.calculate_objective(data, bag_label)
-        test_loss += loss.data[0]
-        error, predicted_label = model.calculate_classification_error(data, bag_label)
-        test_error += error
+    with torch.no_grad():
+        for batch_idx, (data, label) in enumerate(test_loader):
+            bag_label = label
+            data = torch.squeeze(data)
+            # instance_labels = label[1]
+    #         if cuda:
+    #             data, bag_label = data.cuda(), bag_label.cuda()
+            data, bag_label = Variable(data), Variable(bag_label)
+            data, bag_label = data.to(device), bag_label.to(device)
 
-        if batch_idx < 5:  # plot bag labels and instance labels for first 5 bags
-            bag_level = (bag_label.cpu().data.numpy()[0], int(predicted_label.cpu().data.numpy()[0][0]))
-            # instance_level = list(zip(instance_labels.numpy()[0].tolist(),
-                                #  np.round(attention_weights.cpu().data.numpy()[0], decimals=3).tolist()))
+            loss, attention_weights = model.calculate_objective(data, bag_label)
+            test_loss += loss.data[0]
+            error, predicted_label = model.calculate_classification_error(data, bag_label)
+            test_error += error
 
-            print('\nTrue Bag Label, Predicted Bag Label: {}\n')
-                  # 'True Instance Labels, Attention Weights: {}'.format(bag_level, instance_level))
+    #         if batch_idx < 5:  # plot bag labels and instance labels for first 5 bags
+    #             bag_level = (bag_label.cpu().data.numpy()[0], int(predicted_label.cpu().data.numpy()[0][0]))
+                # instance_level = list(zip(instance_labels.numpy()[0].tolist(),
+                                    #  np.round(attention_weights.cpu().data.numpy()[0], decimals=3).tolist()))
+
+    #             print('\nTrue Bag Label, Predicted Bag Label: {}\n')
+                      # 'True Instance Labels, Attention Weights: {}'.format(bag_level, instance_level))
 
     test_error /= len(test_loader)
     test_loss /= len(test_loader)
@@ -209,12 +218,13 @@ def main():
 #     role = sagemaker.get_execution_role()
 #     region = boto3.Session().region_name
     
-#     bucket = 'sagemaker-us-east-2-318322629142'
+    
     
  
     
 #     tiles_key = 'train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/'
 #     tiles_dir = 's3://{}/{}'.format(bucket, tiles_key)
+    bucket = 'sagemaker-us-east-1-318322629142'
 
     tiles_dir = '/opt/ml/input/data/training'
 
@@ -242,8 +252,8 @@ def main():
 
     tiles_df = pd.DataFrame(new_tiles_df)
     
-    # Use only a tenth of the data
-    tiles_df = np.array_split(df, 10)
+    # Use only 20% of the data
+    tiles_df = np.array_split(df, 5)
     
     # Train-test split
     train_df, test_df = train_test_split(tiles_df[0], test_size=0.2)
@@ -260,8 +270,8 @@ def main():
     # Save test_df to s3 bucket
     test_df.to_csv('s3://{}/{}'.format(bucket, 'test_df'))
     
-    if rank == 0:
-        test_loader = data_utils.DataLoader(test_set, batch_size, shuffle=False, num_workers=0)
+#     if rank == 0:
+#         test_loader = data_utils.DataLoader(test_set, batch_size, shuffle=False, num_workers=0)
 
     # Use SMDataParallel PyTorch DDP for efficient distributed training
 
@@ -274,7 +284,7 @@ def main():
 
     print('Start Training')
     for epoch in range(1, 100 + 1):
-        train(epoch)
+        train(model, train_loader, optimizer, epoch)
         # if rank == 0:
         #    test(model, device, test_loader)
 #         scheduler.step()
@@ -288,5 +298,6 @@ def main():
 
 if __name__ == '__main__':
     main()
+
 
 

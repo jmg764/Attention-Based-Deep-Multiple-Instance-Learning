@@ -27,6 +27,7 @@ import torch.utils.data as data_utils
 import PIL
 import numpy as np
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
 
 # Network definition
 from model_def import Attention
@@ -91,6 +92,8 @@ def train(model, train_loader, optimizer, epoch):
     model.train()
     train_loss = 0.
     train_error = 0.
+    predictions = []
+    labels = []
     for batch_idx, (data, label) in enumerate(train_loader):
         print('epoch = ', epoch)
         print('batch_idx = ', batch_idx)
@@ -106,8 +109,10 @@ def train(model, train_loader, optimizer, epoch):
         # calculate loss and metrics
         loss, _ = model.calculate_objective(data, bag_label)
         train_loss += loss.data[0]
-        error, _ = model.calculate_classification_error(data, bag_label)
+        error, Y_hat = model.calculate_classification_error(data, bag_label)
         train_error += error
+        predictions.append(int(Y_hat)) # Keep track of predictions and labels to calculate accuracy after each epoch
+        labels.append(int(bag_label))
         # backward pass
         loss.backward()
         # step
@@ -117,7 +122,7 @@ def train(model, train_loader, optimizer, epoch):
     train_loss /= len(train_loader)
     train_error /= len(train_loader)
 
-    print('Epoch: {}, Loss: {:.4f}, Train error: {:.4f}'.format(epoch, train_loss.cpu().numpy()[0], train_error))
+    print('Train Set, Epoch: {}, Loss: {:.4f}, Error: {:.4f}, Accuracy: {:.2f}%'.format(epoch, train_loss.cpu().numpy()[0], train_error, accuracy_score(labels, predictions)*100))
 
 
 def test(model, test_loader):
@@ -150,7 +155,7 @@ def test(model, test_loader):
     test_error /= len(test_loader)
     test_loss /= len(test_loader)
 
-    print('\nTest Set, Loss: {:.4f}, Test error: {:.4f}'.format(test_loss.cpu().numpy()[0], test_error))
+    print('\nTest Set, Loss: {:.4f}, Error: {:.4f}'.format(test_loss.cpu().numpy()[0], test_error))
 
 
 def save_model(model, model_dir):

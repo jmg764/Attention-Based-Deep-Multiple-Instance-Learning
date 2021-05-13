@@ -258,7 +258,7 @@ def main():
     tiles_df = pd.DataFrame(new_tiles_df)
     
     # Use only 20% of the data
-    tiles_df = np.array_split(df, 5)
+    tiles_df = np.array_split(tiles_df, 5)
     
     # Train-test split
     train_df, test_df = train_test_split(tiles_df[0], test_size=0.2)
@@ -273,6 +273,7 @@ def main():
     train_loader = data_utils.DataLoader(train_set, batch_size, shuffle=True, num_workers=0)
     
     # Save test_df to s3 bucket
+    
     test_df.to_csv('s3://{}/{}'.format(bucket, 'test_df'))
     
 #     if rank == 0:
@@ -303,6 +304,7 @@ def main():
 
 if __name__ == '__main__':
     main()
+
 
 
 

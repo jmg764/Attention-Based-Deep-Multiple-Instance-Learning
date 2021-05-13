@@ -167,7 +167,7 @@ def save_model(model, model_dir):
 def main():
     # Training settings
     
-    parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
+    parser = argparse.ArgumentParser(description='Histopathology MIL')
     parser.add_argument('--batch-size', type=int, default=64, metavar='N',
                         help='input batch size for training (default: 64)')
     parser.add_argument('--test-batch-size', type=int, default=1000, metavar='N',
@@ -191,11 +191,8 @@ def main():
     # Model checkpoint location
     parser.add_argument('--model-dir', type=str, default=os.environ['SM_MODEL_DIR'])
    
-    parser = argparse.ArgumentParser(description='Histopathology MIL')
-    parser.add_argument('--seed', type=int, default=1, metavar='S',
-                        help='random seed (default: 1)')
     args = parser.parse_args()
-    # args.world_size = dist.get_world_size()
+    args.world_size = dist.get_world_size()
     args.rank = rank = dist.get_rank()
     args.local_rank = local_rank = dist.get_local_rank()
     args.lr = 1.0
@@ -306,6 +303,7 @@ def main():
 
 if __name__ == '__main__':
     main()
+
 
 
 

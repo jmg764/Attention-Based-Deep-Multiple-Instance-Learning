@@ -166,7 +166,7 @@ def save_model(model, model_dir):
 
 def main():
     # Training settings
-    '''
+    
     parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
     parser.add_argument('--batch-size', type=int, default=64, metavar='N',
                         help='input batch size for training (default: 64)')
@@ -190,7 +190,7 @@ def main():
                                                                            'the MNIST dataset')
     # Model checkpoint location
     parser.add_argument('--model-dir', type=str, default=os.environ['SM_MODEL_DIR'])
-    '''
+   
     parser = argparse.ArgumentParser(description='Histopathology MIL')
     parser.add_argument('--seed', type=int, default=1, metavar='S',
                         help='random seed (default: 1)')
@@ -198,15 +198,15 @@ def main():
     # args.world_size = dist.get_world_size()
     args.rank = rank = dist.get_rank()
     args.local_rank = local_rank = dist.get_local_rank()
-    # args.lr = 1.0
-    # args.batch_size //= args.world_size // 8
-    # args.batch_size = max(args.batch_size, 1)
-    # data_path = args.data_path
+    args.lr = 1.0
+    args.batch_size //= args.world_size // 8
+    args.batch_size = max(args.batch_size, 1)
+    data_path = args.data_path
 
                         
-    # if args.verbose:
-    #     print('Hello from rank', rank, 'of local_rank',
-    #             local_rank, 'in world size of', args.world_size)
+    if args.verbose:
+        print('Hello from rank', rank, 'of local_rank',
+                local_rank, 'in world size of', args.world_size)
 
     if not torch.cuda.is_available():
         raise Exception("Must run SMDataParallel on CUDA-capable devices.")

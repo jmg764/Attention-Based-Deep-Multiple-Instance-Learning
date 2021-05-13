@@ -64,8 +64,10 @@ class TileDataset(data_utils.Dataset):
     def __getitem__(self, idx):
 #         print('self.img_list = ', self.img_list)
 #         print('self.img_list[idx] = ', self.img_list[idx])
-#         img_id = list(self.img_list[idx].values())[0]
-        img_id = self.img_list[idx]
+        img_id = list(self.img_list[idx].values())[0]
+#         img_id = self.img_list[idx]
+        print('img_id = ', img_id)
+        print('type(img_id) = ', type(img_id))
 
         tiles = ['/'+img_id + '_' + str(i) + '.png' for i in range(0, self.num_tiles)]
         metadata = self.df.iloc[idx]
@@ -88,7 +90,7 @@ class TileDataset(data_utils.Dataset):
     def __len__(self):
         return len(self.img_list)
 
-def train(model, train_loader, optimizer, epoch):
+def train(model, device, train_loader, optimizer, epoch):
     model.train()
     train_loss = 0.
     train_error = 0.
@@ -125,7 +127,7 @@ def train(model, train_loader, optimizer, epoch):
     print('Train Set, Epoch: {}, Loss: {:.4f}, Error: {:.4f}, Accuracy: {:.2f}%'.format(epoch, train_loss.cpu().numpy()[0], train_error, accuracy_score(labels, predictions)*100))
 
 
-def test(model, test_loader):
+def test(model, device, test_loader):
     model.eval()
     test_loss = 0.
     test_error = 0.
@@ -281,7 +283,7 @@ def main():
 
     # Use SMDataParallel PyTorch DDP for efficient distributed training
 
-    
+    device = torch.device("cuda")
     model = DDP(Attention().to(device))
     torch.cuda.set_device(local_rank)
     model.cuda(local_rank)
@@ -290,7 +292,7 @@ def main():
 
     print('Start Training')
     for epoch in range(1, 100 + 1):
-        train(model, train_loader, optimizer, epoch)
+        train(model, device, train_loader, optimizer, epoch)
         # if rank == 0:
         #    test(model, device, test_loader)
 #         scheduler.step()

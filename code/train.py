@@ -66,8 +66,8 @@ class TileDataset(data_utils.Dataset):
 #         print('self.img_list[idx] = ', self.img_list[idx])
         img_id = list(self.img_list[idx].values())[0]
 #         img_id = self.img_list[idx]
-        print('img_id = ', img_id)
-        print('type(img_id) = ', type(img_id))
+#         print('img_id = ', img_id)
+#         print('type(img_id) = ', type(img_id))
 
         tiles = ['/'+img_id + '_' + str(i) + '.png' for i in range(0, self.num_tiles)]
         metadata = self.df.iloc[idx]
@@ -108,12 +108,17 @@ def train(model, device, train_loader, optimizer, epoch):
 
         # reset gradients
         optimizer.zero_grad()
-        # calculate loss and metrics
-        loss, _ = model.calculate_objective(data, bag_label)
-        train_loss += loss.data[0]
-        error, Y_hat = model.calculate_classification_error(data, bag_label)
+        # calculate error
+        bag_label = bag_label.float()
+        Y_prob, Y_hat, _ = model(data)
+        error = 1. - Y_hat.eq(bag_label).cpu().float().mean().data
         train_error += error
-        predictions.append(int(Y_hat)) # Keep track of predictions and labels to calculate accuracy after each epoch
+        # calculate loss
+        Y_prob = torch.clamp(Y_prob, min=1e-5, max=1. - 1e-5)
+        loss = -1. * (bag_label * torch.log(Y_prob) + (1. - bag_label) * torch.log(1. - Y_prob))
+        train_loss += loss.data[0]
+        # Keep track of predictions and labels to calculate accuracy after each epoch
+        predictions.append(int(Y_hat)) 
         labels.append(int(bag_label))
         # backward pass
         loss.backward()
@@ -161,8 +166,23 @@ def test(model, device, test_loader):
 
 
 def save_model(model, model_dir):
-    with open(os.path.join(model_dir, 'model.pth'), 'wb') as f:
+    with open(model_dir, 'wb') as f:
         torch.save(model.module.state_dict(), f)
+        
+def calculate_classification_error(self, X, Y):
+        Y = Y.float()
+        _, Y_hat, _ = self.forward(X)
+        error = 1. - Y_hat.eq(Y).cpu().float().mean().data
+
+        return error, Y_hat
+
+def calculate_objective(self, X, Y):
+    Y = Y.float()
+    Y_prob, _, A = self.forward(X)
+    Y_prob = torch.clamp(Y_prob, min=1e-5, max=1. - 1e-5)
+    neg_log_likelihood = -1. * (Y * torch.log(Y_prob) + (1. - Y) * torch.log(1. - Y_prob))
+
+    return neg_log_likelihood, A
 
 def main():
     # Training settings
@@ -217,17 +237,11 @@ def main():
     import pandas as pd
     import sagemaker
     from sagemaker import get_execution_role
+    
+    # FileNotFoundError: [Errno 2] No such file or directory: 's3://sagemaker-us-east-1-318322629142/model'
+    # s3://sagemaker-us-east-1-318322629142/model/
+    # s3://sagemaker-us-east-1-318322629142/model/
 
-#     role = get_execution_role()
-#     role = sagemaker.get_execution_role()
-#     region = boto3.Session().region_name
-    
-    
-    
- 
-    
-#     tiles_key = 'train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/train_tiles/'
-#     tiles_dir = 's3://{}/{}'.format(bucket, tiles_key)
     bucket = 'sagemaker-us-east-1-318322629142'
 
     tiles_dir = '/opt/ml/input/data/training'
@@ -236,7 +250,7 @@ def main():
     dataset_csv_dir = 's3://{}/{}'.format(bucket, dataset_csv_key)
     
     model_key = 'model'
-    model_dir = 's3://{}/{}'.format(bucket, model_key)
+    model_dir = 's3://{}/{}/'.format(bucket, model_key)
     
     
     df = pd.read_csv(dataset_csv_dir)
@@ -257,10 +271,11 @@ def main():
     tiles_df = pd.DataFrame(new_tiles_df)
     
     # Use only 20% of the data
-    tiles_df = np.array_split(tiles_df, 5)
+#     tiles_df = np.array_split(tiles_df, 5) ### UNCOMMENT LATER
     
     # Train-test split
-    train_df, test_df = train_test_split(tiles_df[0], test_size=0.2)
+#     train_df, test_df = train_test_split(tiles_df[0], test_size=0.2)
+    train_df = tiles_df ### REMOVE LATER
     
     transform_train = transforms.Compose([transforms.RandomHorizontalFlip(0.5),
                                       transforms.RandomVerticalFlip(0.5),
@@ -273,7 +288,7 @@ def main():
     
     # Save test_df to s3 bucket
     
-    test_df.to_csv('s3://{}/{}'.format(bucket, 'test_df'))
+#     test_df.to_csv('s3://{}/{}'.format(bucket, 'test_df')) ### UNCOMMENT LATER
     
 #     if rank == 0:
 #         test_loader = data_utils.DataLoader(test_set, batch_size, shuffle=False, num_workers=0)
@@ -303,8 +318,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-
-
-
-

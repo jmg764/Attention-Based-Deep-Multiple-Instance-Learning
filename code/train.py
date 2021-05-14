@@ -166,7 +166,7 @@ def test(model, device, test_loader):
 
 
 def save_model(model, model_dir):
-    with open(model_dir, 'wb') as f:
+    with open(os.path.join(model_dir, 'model.pth'), 'wb') as f:
         torch.save(model.module.state_dict(), f)
         
 def calculate_classification_error(self, X, Y):
@@ -249,8 +249,8 @@ def main():
     dataset_csv_key = 'panda_dataset.csv'
     dataset_csv_dir = 's3://{}/{}'.format(bucket, dataset_csv_key)
     
-    model_key = 'model'
-    model_dir = 's3://{}/{}/'.format(bucket, model_key)
+#     model_key = 'model'
+#     model_dir = 's3://{}/{}/'.format(bucket, model_key)
     
     
     df = pd.read_csv(dataset_csv_dir)
@@ -313,7 +313,7 @@ def main():
 
     if rank == 0:
         print("Saving the model...")
-        save_model(model, model_dir)   
+        save_model(model, args.model_dir)   
 
 
 if __name__ == '__main__':

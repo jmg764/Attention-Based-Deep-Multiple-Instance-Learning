@@ -33,3 +33,4 @@ def model_fn(model_dir):
         print("Loading the histopathology mil model")
         model.load_state_dict(torch.load(f, map_location=device))
     return model
+

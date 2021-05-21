@@ -36,7 +36,7 @@ class Attention(nn.Module):
         )
 
         self.feature_extractor_part2 = nn.Sequential(
-            nn.Linear(12 * 48 * 30 * 30, self.L),
+            nn.Linear(16 * 48 * 30 * 30, self.L),
             nn.ReLU(),
             nn.Dropout(),
             nn.Linear(self.L, self.L),
@@ -59,7 +59,7 @@ class Attention(nn.Module):
         x = x.squeeze(0)
 
         H = self.feature_extractor_part1(x)
-        H = H.view(-1, 12 * 48 * 30 * 30)
+        H = H.view(-1, 16 * 48 * 30 * 30)
         H = self.feature_extractor_part2(H)
 
         A = self.attention(H) # NxK
@@ -73,18 +73,5 @@ class Attention(nn.Module):
 
         return Y_prob, Y_hat, A.byte()
 
-    def calculate_classification_error(self, X, Y):
-        Y = Y.float()
-        _, Y_hat, _ = self.forward(X)
-        error = 1. - Y_hat.eq(Y).cpu().float().mean().data
 
-        return error, Y_hat
-
-    def calculate_objective(self, X, Y):
-        Y = Y.float()
-        Y_prob, _, A = self.forward(X)
-        Y_prob = torch.clamp(Y_prob, min=1e-5, max=1. - 1e-5)
-        neg_log_likelihood = -1. * (Y * torch.log(Y_prob) + (1. - Y) * torch.log(1. - Y_prob))
-
-        return neg_log_likelihood, A
 

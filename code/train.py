@@ -26,6 +26,7 @@ from torch.optim.lr_scheduler import StepLR
 import torch.utils.data as data_utils
 import PIL
 import numpy as np
+import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 
@@ -50,27 +51,16 @@ class TileDataset(data_utils.Dataset):
         num_tiles: How many tiles should the dataset return per sample
         transform: The function to apply to the image. Usually dataaugmentation. DO NOT DO NORMALIZATION here.
         """
-        # Here I am using an already existing kernel output with a zipfile. 
-        # I suggest extracting files as it can lead to issue with multiprocessing.
-        # self.zip_img = zipfile.ZipFile(img_zip_path) 
         self.img_path = img_path
         self.df = dataframe
         self.num_tiles = num_tiles
-        self.img_list = self.df['image_id'].values
-
-        
+        self.img_list = list(self.df['image_id'])
         self.transform = transform
 
     def __getitem__(self, idx):
-#         print('self.img_list = ', self.img_list)
-#         print('self.img_list[idx] = ', self.img_list[idx])
-        img_id = list(self.img_list[idx].values())[0]
-#         img_id = self.img_list[idx]
-#         print('img_id = ', img_id)
-#         print('type(img_id) = ', type(img_id))
+        img_id = self.img_list[idx]
 
         tiles = ['/'+img_id + '_' + str(i) + '.png' for i in range(0, self.num_tiles)]
-        metadata = self.df.iloc[idx]
         image_tiles = []
 
         for tile in tiles:
@@ -85,7 +75,7 @@ class TileDataset(data_utils.Dataset):
 
         image_tiles = torch.stack(image_tiles, dim=0)
 
-        return torch.tensor(image_tiles), torch.tensor(list(metadata['isup_grade'].values())[0])
+        return torch.tensor(image_tiles), torch.tensor(self.df.iloc[idx]['isup_grade'])
 
     def __len__(self):
         return len(self.img_list)
@@ -140,9 +130,7 @@ def test(model, device, test_loader):
         for batch_idx, (data, label) in enumerate(test_loader):
             bag_label = label
             data = torch.squeeze(data)
-            # instance_labels = label[1]
-    #         if cuda:
-    #             data, bag_label = data.cuda(), bag_label.cuda()
+
             data, bag_label = Variable(data), Variable(bag_label)
             data, bag_label = data.to(device), bag_label.to(device)
 
@@ -150,14 +138,6 @@ def test(model, device, test_loader):
             test_loss += loss.data[0]
             error, predicted_label = model.calculate_classification_error(data, bag_label)
             test_error += error
-
-    #         if batch_idx < 5:  # plot bag labels and instance labels for first 5 bags
-    #             bag_level = (bag_label.cpu().data.numpy()[0], int(predicted_label.cpu().data.numpy()[0][0]))
-                # instance_level = list(zip(instance_labels.numpy()[0].tolist(),
-                                    #  np.round(attention_weights.cpu().data.numpy()[0], decimals=3).tolist()))
-
-    #             print('\nTrue Bag Label, Predicted Bag Label: {}\n')
-                      # 'True Instance Labels, Attention Weights: {}'.format(bag_level, instance_level))
 
     test_error /= len(test_loader)
     test_loss /= len(test_loader)
@@ -167,22 +147,21 @@ def test(model, device, test_loader):
 
 def save_model(model, model_dir):
     with open(os.path.join(model_dir, 'model.pth'), 'wb') as f:
-        torch.save(model.module.state_dict(), f)
-        
-def calculate_classification_error(self, X, Y):
-        Y = Y.float()
-        _, Y_hat, _ = self.forward(X)
-        error = 1. - Y_hat.eq(Y).cpu().float().mean().data
+        torch.save(model.module.state_dict(), f)      
 
-        return error, Y_hat
+def get_csv(directory, df):
+    # Getting tiles that are in S3
+    tiles_list = []
+    for image in os.listdir(directory):
+        tiles_list.append(image.split('_')[0])
 
-def calculate_objective(self, X, Y):
-    Y = Y.float()
-    Y_prob, _, A = self.forward(X)
-    Y_prob = torch.clamp(Y_prob, min=1e-5, max=1. - 1e-5)
-    neg_log_likelihood = -1. * (Y * torch.log(Y_prob) + (1. - Y) * torch.log(1. - Y_prob))
-
-    return neg_log_likelihood, A
+    # Creating dataframe containing labels for each tile in S3
+    tiles_df = pd.DataFrame(columns=['image_id', 'data_provider', 'isup_grade', 'gleason_score'])
+    for i in range(len(tiles_list)):
+        tiles_df = tiles_df.append(df.loc[df['image_id'] == tiles_list[i]])
+    
+    tiles_df = tiles_df.drop_duplicates()
+    return tiles_df
 
 def main():
     # Training settings
@@ -234,66 +213,36 @@ def main():
 
 
     import boto3
-    import pandas as pd
     import sagemaker
     from sagemaker import get_execution_role
-    
-    # FileNotFoundError: [Errno 2] No such file or directory: 's3://sagemaker-us-east-1-318322629142/model'
-    # s3://sagemaker-us-east-1-318322629142/model/
-    # s3://sagemaker-us-east-1-318322629142/model/
 
     bucket = 'sagemaker-us-east-1-318322629142'
 
-    tiles_dir = '/opt/ml/input/data/training'
+    train_dir = '/opt/ml/input/data/training'
+    test_dir = '/opt/ml/input/data/testing'
 
     dataset_csv_key = 'panda_dataset.csv'
     dataset_csv_dir = 's3://{}/{}'.format(bucket, dataset_csv_key)
-    
-#     model_key = 'model'
-#     model_dir = 's3://{}/{}/'.format(bucket, model_key)
-    
     
     df = pd.read_csv(dataset_csv_dir)
     df['isup_grade'] = df['isup_grade'].replace([1,2], 0)
     df['isup_grade'] = df['isup_grade'].replace([3,4,5], 1)
     
-    tiles_dict = {}
-    for image in os.listdir(tiles_dir):
-        tiles_dict[image.split('_')[0]] = tiles_dict.get(image.split('_')[0], 0) + 1
+    train_df = get_csv(train_dir, df)
+    test_df = get_csv(test_dir, df)
     
-    tiles_df = list(tiles_dict.keys())
-    
-    new_tiles_df = []
-    for i in range(len(tiles_df)):
-        row = df.loc[df['image_id'] == tiles_df[i]]
-        new_tiles_df.append(row.to_dict())
-
-    tiles_df = pd.DataFrame(new_tiles_df)
-    
-    # Use only 20% of the data
-#     tiles_df = np.array_split(tiles_df, 5) ### UNCOMMENT LATER
-    
-    # Train-test split
-#     train_df, test_df = train_test_split(tiles_df[0], test_size=0.2)
-    train_df = tiles_df ### REMOVE LATER
+    # Save dataframes to s3 bucket
+    train_df.to_csv('s3://{}/{}'.format(bucket, 'train_df'))
+    test_df.to_csv('s3://{}/{}'.format(bucket, 'test_df'))
     
     transform_train = transforms.Compose([transforms.RandomHorizontalFlip(0.5),
                                       transforms.RandomVerticalFlip(0.5),
                                       transforms.ToTensor()])
 
-    train_set = TileDataset(tiles_dir, train_df, 12, transform=transform_train)
+    train_set = TileDataset(train_dir, train_df, 16, transform=transform_train)
+   
+    train_loader = data_utils.DataLoader(train_set, 1, shuffle=True, num_workers=0)
     
-    batch_size = 1
-    train_loader = data_utils.DataLoader(train_set, batch_size, shuffle=True, num_workers=0)
-    
-    # Save test_df to s3 bucket
-    
-#     test_df.to_csv('s3://{}/{}'.format(bucket, 'test_df')) ### UNCOMMENT LATER
-    
-#     if rank == 0:
-#         test_loader = data_utils.DataLoader(test_set, batch_size, shuffle=False, num_workers=0)
-
-    # Use SMDataParallel PyTorch DDP for efficient distributed training
 
     device = torch.device("cuda")
     model = DDP(Attention().to(device))
@@ -303,7 +252,7 @@ def main():
 #     scheduler = StepLR(optimizer, step_size=1)
 
     print('Start Training')
-    for epoch in range(1, 100 + 1):
+    for epoch in range(1, 10 + 1):
         train(model, device, train_loader, optimizer, epoch)
         # if rank == 0:
         #    test(model, device, test_loader)

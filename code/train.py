@@ -161,8 +161,8 @@ def get_csv(directory, df, num):
         tiles_df = tiles_df.append(df.loc[df['image_id'] == tiles_list[i]])
 
     # Select the first 312 benign and 312 malignant slides 
-    benign = tiles_df[tiles_df.isup_grade == 0][:num/2]
-    malignant = tiles_df[tiles_df.isup_grade == 1][:num/2]
+    benign = tiles_df[tiles_df.isup_grade == 0][:int(num/2)]
+    malignant = tiles_df[tiles_df.isup_grade == 1][:int(num/2)]
 
     tiles_df = pd.concat([benign, malignant])
     tiles_df = tiles_df.drop_duplicates()
@@ -274,3 +274,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+

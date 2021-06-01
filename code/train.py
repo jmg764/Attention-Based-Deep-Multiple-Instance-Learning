@@ -149,7 +149,7 @@ def save_model(model, model_dir):
     with open(os.path.join(model_dir, 'model.pth'), 'wb') as f:
         torch.save(model.module.state_dict(), f)      
 
-def get_csv(directory, df):
+def get_csv(directory, df, num):
     # Getting tiles that are in S3
     tiles_list = []
     for image in os.listdir(directory):
@@ -159,8 +159,14 @@ def get_csv(directory, df):
     tiles_df = pd.DataFrame(columns=['image_id', 'data_provider', 'isup_grade', 'gleason_score'])
     for i in range(len(tiles_list)):
         tiles_df = tiles_df.append(df.loc[df['image_id'] == tiles_list[i]])
-    
+
+    # Select the first 312 benign and 312 malignant slides 
+    benign = tiles_df[tiles_df.isup_grade == 0][:num/2]
+    malignant = tiles_df[tiles_df.isup_grade == 1][:num/2]
+
+    tiles_df = pd.concat([benign, malignant])
     tiles_df = tiles_df.drop_duplicates()
+    
     return tiles_df
 
 def main():
@@ -219,17 +225,18 @@ def main():
     bucket = 'sagemaker-us-east-1-318322629142'
 
     train_dir = '/opt/ml/input/data/training'
-    test_dir = '/opt/ml/input/data/testing'
+#     test_dir = '/opt/ml/input/data/testing'
 
     dataset_csv_key = 'panda_dataset.csv'
     dataset_csv_dir = 's3://{}/{}'.format(bucket, dataset_csv_key)
     
     df = pd.read_csv(dataset_csv_dir)
-    df['isup_grade'] = df['isup_grade'].replace([1,2], 0)
-    df['isup_grade'] = df['isup_grade'].replace([3,4,5], 1)
+#     df['isup_grade'] = df['isup_grade'].replace([1,2], 0)
+    df['isup_grade'] = df['isup_grade'].replace([1,2,3,4,5], 1)
     
-    train_df = get_csv(train_dir, df)
-    test_df = get_csv(test_dir, df)
+    tiles_df = get_csv(train_dir, df, 624)
+#     test_df = get_csv(test_dir, df)
+    train_df, test_df = train_test_split(tiles_df)
     
     # Save dataframes to s3 bucket
     train_df.to_csv('s3://{}/{}'.format(bucket, 'train_df'))

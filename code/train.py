@@ -146,7 +146,7 @@ def test(model, device, test_loader):
 
 
 def save_model(model, model_dir):
-    with open(os.path.join(model_dir, 'model.pth'), 'wb') as f:
+    with open(os.path.join(model_dir, 'model.pt'), 'wb') as f:
         torch.save(model.module.state_dict(), f)      
 
 def get_csv(directory, df, num):
@@ -269,9 +269,11 @@ def main():
 
     if rank == 0:
         print("Saving the model...")
-        save_model(model, args.model_dir)   
+#         save_model(model, args.model_dir)
+        torch.save(model.state_dict(), "/opt/ml/model/model.pt")
 
 
 if __name__ == '__main__':
     main()
+
 

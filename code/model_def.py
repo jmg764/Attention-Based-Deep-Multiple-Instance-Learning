@@ -36,7 +36,7 @@ class Attention(nn.Module):
         )
 
         self.feature_extractor_part2 = nn.Sequential(
-            nn.Linear(16 * 48 * 30 * 30, self.L),
+            nn.Linear(48 * 30 * 30, self.L),
             nn.ReLU(),
             nn.Dropout(),
             nn.Linear(self.L, self.L),
@@ -59,7 +59,7 @@ class Attention(nn.Module):
         x = x.squeeze(0)
 
         H = self.feature_extractor_part1(x)
-        H = H.view(-1, 16 * 48 * 30 * 30)
+        H = H.view(-1, 48 * 30 * 30)
         H = self.feature_extractor_part2(H)
 
         A = self.attention(H) # NxK

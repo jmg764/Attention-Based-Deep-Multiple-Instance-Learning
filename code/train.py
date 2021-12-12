@@ -98,16 +98,15 @@ def train(model, device, train_loader, optimizer, epoch):
 
         # reset gradients
         optimizer.zero_grad()
-        # calculate error
-        bag_label = bag_label.float()
-        Y_prob, Y_hat, _ = model(data)
-        error = 1. - Y_hat.eq(bag_label).cpu().float().mean().data
-        train_error += error
         # calculate loss
-        Y_prob = torch.clamp(Y_prob, min=1e-5, max=1. - 1e-5)
-        loss = -1. * (bag_label * torch.log(Y_prob) + (1. - bag_label) * torch.log(1. - Y_prob))
+        loss, attention_weights = model.calculate_objective(data, bag_label)
         train_loss += loss.data[0]
+        # calculate error
+        error, predicted_label = model.calculate_classification_error(data, bag_label)
+        train_error += error
+        
         # Keep track of predictions and labels to calculate accuracy after each epoch
+        _, Y_hat, _ = model(data)
         predictions.append(int(Y_hat)) 
         labels.append(int(bag_label))
         # backward pass

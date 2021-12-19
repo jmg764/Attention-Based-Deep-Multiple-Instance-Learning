@@ -12,10 +12,12 @@
 # language governing permissions and limitations under the License.
 
 from __future__ import print_function
-
 import os
 import argparse
 import time
+import numpy as np
+import pandas as pd
+
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
@@ -25,31 +27,33 @@ from torch.autograd import Variable
 from torch.optim.lr_scheduler import StepLR
 import torch.utils.data as data_utils
 import PIL
-import numpy as np
-import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
+
+# Import SMDataParallel PyTorch Modules
+import sagemaker
+from sagemaker import get_execution_role
+import boto3
+from smdistributed.dataparallel.torch.parallel.distributed import DistributedDataParallel as DDP
+import smdistributed.dataparallel.torch.distributed as dist
 
 # Network definition
 from model_def import Attention
 
-# Import SMDataParallel PyTorch Modules
-from smdistributed.dataparallel.torch.parallel.distributed import DistributedDataParallel as DDP
-import smdistributed.dataparallel.torch.distributed as dist
-
 dist.init_process_group()
-
-
 cuda = False
 
 class TileDataset(data_utils.Dataset):
-
+    """
+    Custom dataset class for tiles
+    __getitem__ returns a batch of 16 tiles along with their isup_grade
+    """
     def __init__(self, img_path, dataframe, num_tiles, transform=None):
         """
         img_zip: Where the images are stored
         dataframe: The train.csv dataframe
         num_tiles: How many tiles should the dataset return per sample
-        transform: The function to apply to the image. Usually dataaugmentation. DO NOT DO NORMALIZATION here.
+        transform: The function to apply to the image. Usually data augmentation. DO NOT DO NORMALIZATION here.
         """
         self.img_path = img_path
         self.df = dataframe
@@ -91,17 +95,17 @@ def train(model, device, train_loader, optimizer, epoch):
         print('batch_idx = ', batch_idx)
         bag_label = label
         data = torch.squeeze(data)
-#         if cuda:
-#             data, bag_label = data.cuda(), bag_label.cuda()
+        if cuda:
+            data, bag_label = data.cuda(), bag_label.cuda()
         data, bag_label = Variable(data), Variable(bag_label)
         data, bag_label = data.to(device), bag_label.to(device)
 
-        # reset gradients
+        # Reset gradients
         optimizer.zero_grad()
-        # calculate loss
+        # Calculate loss
         loss, attention_weights = model.calculate_objective(data, bag_label)
         train_loss += loss.data[0]
-        # calculate error
+        # Calculate error
         error, predicted_label = model.calculate_classification_error(data, bag_label)
         train_error += error
         
@@ -109,12 +113,12 @@ def train(model, device, train_loader, optimizer, epoch):
         _, Y_hat, _ = model(data)
         predictions.append(int(Y_hat)) 
         labels.append(int(bag_label))
-        # backward pass
+        # Backward pass
         loss.backward()
-        # step
+        # Update model weights
         optimizer.step()
 
-    # calculate loss and error for epoch
+    # Calculate loss and error for epoch
     train_loss /= len(train_loader)
     train_error /= len(train_loader)
 
@@ -144,11 +148,14 @@ def test(model, device, test_loader):
     print('\nTest Set, Loss: {:.4f}, Error: {:.4f}'.format(test_loss.cpu().numpy()[0], test_error))
 
 
-def save_model(model, model_dir):
-    with open(os.path.join(model_dir, 'model.pt'), 'wb') as f:
-        torch.save(model.module.state_dict(), f)      
-
 def get_csv(directory, df, num):
+    """
+    Given the image directory and panda_dataset.csv
+    (tiles in image directory are a subset of those in panda_dataset.csv),
+    returns a DataFrame consisting the first num/2 benign and num/2 malignant 
+    tiles available in the directory along with their isup_grade and gleason_score
+    """
+
     # Getting tiles that are in S3
     tiles_list = []
     for image in os.listdir(directory):
@@ -172,7 +179,6 @@ def get_csv(directory, df, num):
 
 def main():
     # Training settings
-    
     parser = argparse.ArgumentParser(description='Histopathology MIL')
     parser.add_argument('--batch-size', type=int, default=64, metavar='N',
                         help='input batch size for training (default: 64)')
@@ -194,6 +200,7 @@ def main():
                         help='For displaying SMDataParallel-specific logs')
     parser.add_argument('--data-path', type=str, default='/tmp/data', help='Path for downloading '
                                                                            'the MNIST dataset')
+    
     # Model checkpoint location
     parser.add_argument('--model-dir', type=str, default=os.environ['SM_MODEL_DIR'])
    
@@ -205,8 +212,7 @@ def main():
     args.batch_size //= args.world_size // 8
     args.batch_size = max(args.batch_size, 1)
     data_path = args.data_path
-
-                        
+                
     if args.verbose:
         print('Hello from rank', rank, 'of local_rank',
                 local_rank, 'in world size of', args.world_size)
@@ -218,28 +224,23 @@ def main():
 
     device = torch.device("cuda")
 
-
-    import boto3
-    import sagemaker
-    from sagemaker import get_execution_role
-
     bucket = 'sagemaker-us-east-1-318322629142'
 
     train_dir = '/opt/ml/input/data/training'
-#     test_dir = '/opt/ml/input/data/testing'
 
     dataset_csv_key = 'panda_dataset.csv'
     dataset_csv_dir = 's3://{}/{}'.format(bucket, dataset_csv_key)
     
+    # Load panda_dataset.csv
     df = pd.read_csv(dataset_csv_dir)
-#     df['isup_grade'] = df['isup_grade'].replace([1,2], 0)
+
+    # Replace isup_grade scores of 1,2,3,4, & 5 with 1 to indicate malignant
     df['isup_grade'] = df['isup_grade'].replace([1,2,3,4,5], 1)
     
     tiles_df = get_csv(train_dir, df, 624)
-#     test_df = get_csv(test_dir, df)
     train_df, test_df = train_test_split(tiles_df)
     
-    # Save dataframes to s3 bucket
+    # Save dataframes to s3 bucket (test_df is used in infer_pytorch.ipynb)
     train_df.to_csv('s3://{}/{}'.format(bucket, 'train_df'))
     test_df.to_csv('s3://{}/{}'.format(bucket, 'test_df'))
     
@@ -257,20 +258,13 @@ def main():
     torch.cuda.set_device(local_rank)
     model.cuda(local_rank)
     optimizer = optim.Adam(model.parameters(), lr=0.0001, betas=(0.9, 0.999), weight_decay=0.0005)
-#     scheduler = StepLR(optimizer, step_size=1)
 
     print('Start Training')
     for epoch in range(1, 10 + 1):
         train(model, device, train_loader, optimizer, epoch)
-        # if rank == 0:
-        #    test(model, device, test_loader)
-#         scheduler.step()
-    # print('Start Testing')
-    # test()
 
     if rank == 0:
         print("Saving the model...")
-#         save_model(model, args.model_dir)
         torch.save(model.state_dict(), "/opt/ml/model/model.pt")
 
 
